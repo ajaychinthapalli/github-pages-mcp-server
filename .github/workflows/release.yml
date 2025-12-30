@@ -27,13 +27,32 @@ jobs:
       - name: Build project
         run: npm run build
 
+      - name: Verify build output
+        run: |
+          if [ ! -d "dist" ] || [ -z "$(ls -A dist)" ]; then
+            echo "Error: dist directory is missing or empty"
+            exit 1
+          fi
+          echo "Build successful, dist directory contains:"
+          ls -lh dist/
+
       - name: Create tarball
         run: |
           tar -czf github-pages-mcp-server-dist.tar.gz -C dist .
-          tar -czf github-pages-mcp-server-full.tar.gz --exclude=node_modules --exclude=.git .
+          tar -czf github-pages-mcp-server-full.tar.gz \
+            --exclude=node_modules \
+            --exclude=.git \
+            --exclude=dist \
+            --exclude=.github \
+            --exclude=*.log \
+            --exclude=.DS_Store \
+            --exclude=*.tsbuildinfo \
+            .
+          echo "Created release assets:"
+          ls -lh *.tar.gz
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             github-pages-mcp-server-dist.tar.gz
