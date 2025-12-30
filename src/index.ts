@@ -10,6 +10,17 @@ import {
 import { Octokit } from "@octokit/rest";
 import { z } from "zod";
 
+// GitHub Pages response interface
+interface GitHubPagesResponse {
+  html_url?: string;
+  source?: {
+    branch: string;
+    path: string;
+  };
+  build_type?: string;
+  cname?: string | null;
+}
+
 // Tool input schemas
 const EnableGithubPagesSchema = z.object({
   owner: z.string().describe("Repository owner (username or organization)"),
@@ -74,7 +85,7 @@ class GitHubPagesMCPServer {
     // Initialize Octokit with auth token from environment
     const token = process.env.GITHUB_TOKEN;
     if (!token) {
-      console.error("Warning: GITHUB_TOKEN environment variable not set");
+      console.error("Warning: GITHUB_TOKEN environment variable not set. GitHub API calls will fail without authentication.");
     }
     
     this.octokit = new Octokit({
@@ -475,11 +486,12 @@ class GitHubPagesMCPServer {
       // Create blobs for each file
       const treeItems = await Promise.all(
         files.map(async (file) => {
+          const encoding = file.encoding === "base64" ? "base64" : "utf-8";
           const blobResponse = await this.octokit.git.createBlob({
             owner,
             repo,
             content: file.content,
-            encoding: (file.encoding as "utf-8" | "base64") || "utf-8",
+            encoding: encoding,
           });
 
           return {
@@ -615,9 +627,13 @@ class GitHubPagesMCPServer {
       };
 
       if (source) {
+        const path = source.path || "/";
+        if (path !== "/" && path !== "/docs") {
+          throw new Error("Invalid path: must be '/' or '/docs'");
+        }
         updateParams.source = {
           branch: source.branch,
-          path: (source.path || "/") as "/" | "/docs",
+          path: path,
         };
       }
 
@@ -630,6 +646,7 @@ class GitHubPagesMCPServer {
       }
 
       const response = await this.octokit.repos.updateInformationAboutPagesSite(updateParams);
+      const data = response.data as GitHubPagesResponse;
 
       return {
         content: [
@@ -639,10 +656,10 @@ class GitHubPagesMCPServer {
               {
                 success: true,
                 message: "GitHub Pages configuration updated successfully",
-                url: (response.data as any).html_url,
-                source: (response.data as any).source,
-                build_type: (response.data as any).build_type,
-                cname: (response.data as any).cname,
+                url: data.html_url,
+                source: data.source,
+                build_type: data.build_type,
+                cname: data.cname,
               },
               null,
               2
