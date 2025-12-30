@@ -202,6 +202,29 @@ npm run watch
 npm run lint
 ```
 
+## Releasing
+
+This project uses GitHub Actions to automatically create releases when version tags are pushed.
+
+### Creating a Release
+
+1. Update the version in `package.json`
+2. Commit the changes
+3. Create and push a version tag:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The GitHub Actions workflow will automatically:
+- Build the project
+- Create a GitHub release with the tag
+- Upload release assets:
+  - `github-pages-mcp-server-dist.tar.gz` - Compiled distribution files
+  - `github-pages-mcp-server-full.tar.gz` - Full source code (excluding node_modules)
+- Generate release notes automatically
+
 ## Requirements
 
 - Node.js >= 18.0.0
